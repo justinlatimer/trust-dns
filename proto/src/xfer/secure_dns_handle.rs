@@ -10,7 +10,7 @@
 use std::clone::Clone;
 use std::collections::HashSet;
 use std::mem;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use futures::*;
 
@@ -46,7 +46,7 @@ where
     E: FromProtoError + 'static,
 {
     handle: H,
-    trust_anchor: Rc<TrustAnchor>,
+    trust_anchor: Arc<TrustAnchor>,
     request_depth: usize,
     minimum_key_len: usize,
     minimum_algorithm: Algorithm, // used to prevent down grade attacks...
@@ -77,7 +77,7 @@ where
     pub fn with_trust_anchor(handle: H, trust_anchor: TrustAnchor) -> SecureDnsHandle<H> {
         SecureDnsHandle {
             handle: handle,
-            trust_anchor: Rc::new(trust_anchor),
+            trust_anchor: Arc::new(trust_anchor),
             request_depth: 0,
             minimum_key_len: 0,
             minimum_algorithm: Algorithm::RSASHA256,
@@ -90,7 +90,7 @@ where
     fn clone_with_context(&self) -> Self {
         SecureDnsHandle {
             handle: self.handle.clone(),
-            trust_anchor: Rc::clone(&self.trust_anchor),
+            trust_anchor: Arc::clone(&self.trust_anchor),
             request_depth: self.request_depth + 1,
             minimum_key_len: self.minimum_key_len,
             minimum_algorithm: self.minimum_algorithm,
@@ -101,7 +101,7 @@ where
 impl<H, E> DnsHandle for SecureDnsHandle<H>
 where
     H: DnsHandle<Error = E>,
-    E: FromProtoError + Clone,
+    E: FromProtoError,
 {
     type Error = E;
 
@@ -113,7 +113,7 @@ where
     fn send<R: Into<DnsRequest>>(
         &mut self,
         request: R,
-    ) -> Box<Future<Item = DnsResponse, Error = Self::Error>> {
+    ) -> Box<Future<Item = DnsResponse, Error = Self::Error> + Send> {
         let mut request = request.into();
 
         // backstop, this might need to be configurable at some point
@@ -208,7 +208,7 @@ where
 /// A future to verify all RRSets in a returned Message.
 struct VerifyRrsetsFuture<E> {
     message_result: Option<DnsResponse>,
-    rrsets: SelectAll<Box<Future<Item = Rrset, Error = E>>>,
+    rrsets: SelectAll<Box<Future<Item = Rrset, Error = E> + Send>>,
     verified_rrsets: HashSet<(Name, RecordType)>,
 }
 
@@ -218,10 +218,10 @@ fn verify_rrsets<H, E>(
     handle: &SecureDnsHandle<H>,
     message_result: DnsResponse,
     dns_class: DNSClass,
-) -> Box<Future<Item = DnsResponse, Error = E>>
+) -> Box<Future<Item = DnsResponse, Error = E> + Send>
 where
     H: DnsHandle<Error = E>,
-    E: FromProtoError + Clone,
+    E: FromProtoError,
 {
     let mut rrset_types: HashSet<(Name, RecordType)> = HashSet::new();
     for rrset in message_result
@@ -259,7 +259,7 @@ where
 
     // collect all the rrsets to verify
     // TODO: is there a way to get rid of this clone() safely?
-    let mut rrsets: Vec<Box<Future<Item = Rrset, Error = E>>> =
+    let mut rrsets: Vec<Box<Future<Item = Rrset, Error = E> + Send>> =
         Vec::with_capacity(rrset_types.len());
     for (name, record_type) in rrset_types {
         // TODO: should we evaluate the different sections (answers and name_servers) separately?
@@ -424,7 +424,7 @@ fn verify_rrset<H, E>(
     handle: SecureDnsHandle<H, E>,
     rrset: Rrset,
     rrsigs: Vec<Record>,
-) -> Box<Future<Item = Rrset, Error = E>>
+) -> Box<Future<Item = Rrset, Error = E> + Send>
 where
     H: DnsHandle<Error = E>,
     E: FromProtoError,
@@ -467,7 +467,7 @@ where
 fn verify_dnskey_rrset<H, E>(
     mut handle: SecureDnsHandle<H, E>,
     rrset: Rrset,
-) -> Box<Future<Item = Rrset, Error = E>>
+) -> Box<Future<Item = Rrset, Error = E> + Send>
 where
     H: DnsHandle<Error = E>,
     E: FromProtoError,
@@ -636,13 +636,13 @@ fn verify_default_rrset<H, E>(
     handle: &SecureDnsHandle<H>,
     rrset: Rrset,
     rrsigs: Vec<Record>,
-) -> Box<Future<Item = Rrset, Error = E>>
+) -> Box<Future<Item = Rrset, Error = E> + Send>
 where
     H: DnsHandle<Error = E>,
     E: FromProtoError,
 {
     // the record set is going to be shared across a bunch of futures, Rc for that.
-    let rrset = Rc::new(rrset);
+    let rrset = Arc::new(rrset);
     debug!(
         "default validation {}, record_type: {:?}",
         rrset.name, rrset.record_type
@@ -678,7 +678,7 @@ where
               }
             )
             .filter_map(|sig| {
-              let rrset = Rc::clone(&rrset);
+              let rrset = Arc::clone(&rrset);
 
               if rrset.records.iter()
                               .any(|r| {
@@ -695,7 +695,7 @@ where
                             })
                             .next()
                             .ok_or_else(|| E::from(ProtoErrorKind::Message("self-signed dnskey is invalid").into())),
-            ).map(move |rrset| Rc::try_unwrap(rrset).expect("unable to unwrap Rc")),
+            ).map(move |rrset| Arc::try_unwrap(rrset).expect("unable to unwrap Arc")),
         );
     }
 
@@ -720,7 +720,7 @@ where
                               }
                             )
                             .map(|sig| {
-                              let rrset = Rc::clone(&rrset);
+                              let rrset = Arc::clone(&rrset);
                               let mut handle = handle.clone_with_context();
 
                               handle.lookup(Query::query(sig.signer_name().clone(), RecordType::DNSSEC(DNSSECRecordType::DNSKEY)),
@@ -754,8 +754,8 @@ where
     let select = select_ok(verifications)
                           // getting here means at least one of the rrsigs succeeded...
                           .map(move |(rrset, rest)| {
-                              drop(rest); // drop all others, should free up Rc
-                              Rc::try_unwrap(rrset).expect("unable to unwrap Rc")
+                              drop(rest); // drop all others, should free up Arc
+                              Arc::try_unwrap(rrset).expect("unable to unwrap Arc")
                           });
 
     Box::new(select)

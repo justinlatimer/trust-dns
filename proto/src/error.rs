@@ -289,10 +289,10 @@ impl Clone for ProtoError {
     }
 }
 
-pub trait FromProtoError: From<ProtoError> + ::std::error::Error + Clone {}
+pub trait FromProtoError: From<ProtoError> + ::std::error::Error + Clone + Send {}
 
 impl<E> FromProtoError for E
 where
-    E: From<ProtoError> + ::std::error::Error + Clone,
+    E: From<ProtoError> + ::std::error::Error + Clone + Send,
 {
 }

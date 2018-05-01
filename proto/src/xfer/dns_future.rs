@@ -119,7 +119,7 @@ where
 impl<S, E, MF> DnsFuture<S, E, MF>
 where
     S: Stream<Item = Vec<u8>, Error = io::Error> + Send + 'static,
-    E: FromProtoError + Send + 'static,
+    E: FromProtoError + 'static,
     MF: MessageFinalizer + Send + Sync + 'static,
 {
     /// Spawns a new DnsFuture Stream. This uses a default timeout of 5 seconds for all requests.
@@ -262,7 +262,7 @@ where
 impl<S, E, MF> Future for DnsFuture<S, E, MF>
 where
     S: Stream<Item = Vec<u8>, Error = io::Error> + Send + 'static,
-    E: FromProtoError + Send + 'static,
+    E: FromProtoError + 'static,
     MF: MessageFinalizer + Send + Sync + 'static,
 {
     type Item = ();
@@ -478,7 +478,7 @@ where
 enum ClientStreamOrError<S, E, MF>
 where
     S: Stream<Item = Vec<u8>, Error = io::Error> + Send + 'static,
-    E: FromProtoError + Send,
+    E: FromProtoError,
     MF: MessageFinalizer + Send + Sync + 'static,
 {
     Future(DnsFuture<S, E, MF>),
@@ -488,7 +488,7 @@ where
 impl<S, E, MF> Future for ClientStreamOrError<S, E, MF>
 where
     S: Stream<Item = Vec<u8>, Error = io::Error> + Send + 'static,
-    E: FromProtoError + Send + 'static,
+    E: FromProtoError + 'static,
     MF: MessageFinalizer + Send + Sync + 'static,
 {
     type Item = ();

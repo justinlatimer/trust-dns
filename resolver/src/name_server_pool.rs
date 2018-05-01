@@ -246,7 +246,7 @@ impl ConnectionProvider for StandardConnection {
 
 /// Specifies the details of a remote NameServer used for lookups
 #[derive(Clone)]
-pub struct NameServer<C: DnsHandle, P: ConnectionProvider<ConnHandle = C>> {
+pub struct NameServer<C: DnsHandle, P: ConnectionProvider<ConnHandle = C> + Send> {
     config: NameServerConfig,
     options: ResolverOpts,
     client: C,
@@ -255,7 +255,7 @@ pub struct NameServer<C: DnsHandle, P: ConnectionProvider<ConnHandle = C>> {
     phantom: PhantomData<P>,
 }
 
-impl<C: DnsHandle, P: ConnectionProvider<ConnHandle = C>> NameServer<C, P> {
+impl<C: DnsHandle, P: ConnectionProvider<ConnHandle = C> + Send> NameServer<C, P> {
     pub fn new(
         config: NameServerConfig,
         options: ResolverOpts,
@@ -347,7 +347,7 @@ impl<C: DnsHandle, P: ConnectionProvider<ConnHandle = C>> NameServer<C, P> {
 impl<C, P> DnsHandle for NameServer<C, P>
 where
     C: DnsHandle<Error = ResolveError>,
-    P: ConnectionProvider<ConnHandle = C>,
+    P: ConnectionProvider<ConnHandle = C> + Send,
 {
     type Error = ResolveError;
 
@@ -359,7 +359,7 @@ where
     fn send<R: Into<DnsRequest>>(
         &mut self,
         request: R,
-    ) -> Box<Future<Item = DnsResponse, Error = Self::Error>> {
+    ) -> Box<Future<Item = DnsResponse, Error = Self::Error> + Send> {
         // if state is failed, return future::err(), unless retry delay expired...
         if let Err(error) = self.try_reconnect() {
             return Box::new(future::err(error));
@@ -409,7 +409,7 @@ where
     }
 }
 
-impl<C: DnsHandle, P: ConnectionProvider<ConnHandle = C>> Ord for NameServer<C, P> {
+impl<C: DnsHandle, P: ConnectionProvider<ConnHandle = C> + Send> Ord for NameServer<C, P> {
     /// Custom implementation of Ord for NameServer which incorporates the performance of the connection into it's ranking
     fn cmp(&self, other: &Self) -> Ordering {
         // if they are literally equal, just return
@@ -427,20 +427,20 @@ impl<C: DnsHandle, P: ConnectionProvider<ConnHandle = C>> Ord for NameServer<C, 
     }
 }
 
-impl<C: DnsHandle, P: ConnectionProvider<ConnHandle = C>> PartialOrd for NameServer<C, P> {
+impl<C: DnsHandle, P: ConnectionProvider<ConnHandle = C> + Send> PartialOrd for NameServer<C, P> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<C: DnsHandle, P: ConnectionProvider<ConnHandle = C>> PartialEq for NameServer<C, P> {
+impl<C: DnsHandle, P: ConnectionProvider<ConnHandle = C> + Send> PartialEq for NameServer<C, P> {
     /// NameServers are equal if the config (connection information) are equal
     fn eq(&self, other: &Self) -> bool {
         self.config == other.config
     }
 }
 
-impl<C: DnsHandle, P: ConnectionProvider<ConnHandle = C>> Eq for NameServer<C, P> {}
+impl<C: DnsHandle, P: ConnectionProvider<ConnHandle = C> + Send> Eq for NameServer<C, P> {}
 
 // TODO: once IPv6 is better understood, also make this a binary keep.
 #[cfg(feature = "mdns")]
@@ -459,7 +459,7 @@ fn mdns_nameserver(
 ///
 /// This is not expected to be used directly, see `ResolverFuture`.
 #[derive(Clone)]
-pub struct NameServerPool<C: DnsHandle + 'static, P: ConnectionProvider<ConnHandle = C> + 'static> {
+pub struct NameServerPool<C: DnsHandle + 'static, P: ConnectionProvider<ConnHandle = C> + Send + 'static> {
     // TODO: switch to FuturesMutex (Mutex will have some undesireable locking)
     datagram_conns: Arc<Mutex<BinaryHeap<NameServer<C, P>>>>, /* All NameServers must be the same type */
     stream_conns: Arc<Mutex<BinaryHeap<NameServer<C, P>>>>, /* All NameServers must be the same type */
@@ -469,7 +469,7 @@ pub struct NameServerPool<C: DnsHandle + 'static, P: ConnectionProvider<ConnHand
     phantom: PhantomData<P>,
 }
 
-impl<C: DnsHandle + 'static, P: ConnectionProvider<ConnHandle = C> + 'static> NameServerPool<C, P> {
+impl<C: DnsHandle + 'static, P: ConnectionProvider<ConnHandle = C> + Send + 'static> NameServerPool<C, P> {
     pub(crate) fn from_config(
         config: &ResolverConfig,
         options: &ResolverOpts,
@@ -555,14 +555,14 @@ impl<C: DnsHandle + 'static, P: ConnectionProvider<ConnHandle = C> + 'static> Na
 impl<C, P> DnsHandle for NameServerPool<C, P>
 where
     C: DnsHandle<Error = ResolveError> + 'static,
-    P: ConnectionProvider<ConnHandle = C> + 'static,
+    P: ConnectionProvider<ConnHandle = C> + Send + 'static,
 {
     type Error = ResolveError;
 
     fn send<R: Into<DnsRequest>>(
         &mut self,
         request: R,
-    ) -> Box<Future<Item = DnsResponse, Error = Self::Error>> {
+    ) -> Box<Future<Item = DnsResponse, Error = Self::Error> + Send> {
         let request = request.into();
         let datagram_conns = self.datagram_conns.clone();
         let stream_conns1 = self.stream_conns.clone();
@@ -607,18 +607,18 @@ where
     }
 }
 
-enum TrySend<C: DnsHandle + 'static, P: ConnectionProvider<ConnHandle = C> + 'static> {
+enum TrySend<C: DnsHandle + 'static, P: ConnectionProvider<ConnHandle = C> + Send + 'static> {
     Lock {
         conns: Arc<Mutex<BinaryHeap<NameServer<C, P>>>>,
         request: Option<DnsRequest>,
     },
-    DoSend(Box<Future<Item = DnsResponse, Error = ResolveError>>),
+    DoSend(Box<Future<Item = DnsResponse, Error = ResolveError> + Send>),
 }
 
 impl<C, P> Future for TrySend<C, P>
 where
     C: DnsHandle<Error = ResolveError> + 'static,
-    P: ConnectionProvider<ConnHandle = C> + 'static,
+    P: ConnectionProvider<ConnHandle = C> + Send + 'static,
 {
     type Item = DnsResponse;
     type Error = ResolveError;
@@ -679,7 +679,7 @@ mod mdns {
     pub fn maybe_local<C, P>(name_server: &mut NameServer<C, P>, request: DnsRequest) -> Local
     where
         C: DnsHandle<Error = ResolveError> + 'static,
-        P: ConnectionProvider<ConnHandle = C> + 'static,
+        P: ConnectionProvider<ConnHandle = C> + Send + 'static,
     {
         if request
             .queries()
@@ -694,7 +694,7 @@ mod mdns {
 }
 
 pub enum Local {
-    ResolveFuture(Box<Future<Item = DnsResponse, Error = ResolveError>>),
+    ResolveFuture(Box<Future<Item = DnsResponse, Error = ResolveError> + Send>),
     NotMdns(DnsRequest),
 }
 
@@ -712,7 +712,7 @@ impl Local {
     /// # Panics
     ///
     /// Panics if this is in fact a Local::NotMdns
-    fn take_future(self) -> Box<Future<Item = DnsResponse, Error = ResolveError>> {
+    fn take_future(self) -> Box<Future<Item = DnsResponse, Error = ResolveError> + Send> {
         match self {
             Local::ResolveFuture(future) => future,
             _ => panic!("non Local queries have no future, see take_message()"),

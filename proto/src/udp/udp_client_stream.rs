@@ -38,7 +38,7 @@ impl UdpClientStream {
         Box<DnsStreamHandle<Error = E> + Send>,
     )
     where
-        E: FromProtoError + Send + 'static,
+        E: FromProtoError + 'static,
     {
         let (stream_future, sender) = UdpStream::new(name_server);
 

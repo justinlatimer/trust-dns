@@ -33,7 +33,7 @@ impl MdnsClientStream {
         Box<DnsStreamHandle<Error = E> + Send>,
     )
     where
-        E: FromProtoError + Send + 'static,
+        E: FromProtoError + 'static,
     {
         Self::new::<E>(
             *MDNS_IPV4,
@@ -54,7 +54,7 @@ impl MdnsClientStream {
         Box<DnsStreamHandle<Error = E> + Send>,
     )
     where
-        E: FromProtoError + Send + 'static,
+        E: FromProtoError + 'static,
     {
         Self::new::<E>(
             *MDNS_IPV6,
@@ -84,7 +84,7 @@ impl MdnsClientStream {
         Box<DnsStreamHandle<Error = E> + Send>,
     )
     where
-        E: FromProtoError + Send + 'static,
+        E: FromProtoError + 'static,
     {
         let (stream_future, sender) = MdnsStream::new(
             mdns_addr,

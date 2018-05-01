@@ -88,14 +88,14 @@ impl<'a> Iterator for LookupIter<'a> {
 #[doc(hidden)]
 pub enum LookupEither<
     C: DnsHandle<Error = ResolveError> + 'static,
-    P: ConnectionProvider<ConnHandle = C> + 'static,
+    P: ConnectionProvider<ConnHandle = C> + Send + 'static,
 > {
     Retry(RetryDnsHandle<NameServerPool<C, P>>),
     #[cfg(feature = "dnssec")]
     Secure(SecureDnsHandle<RetryDnsHandle<NameServerPool<C, P>>>),
 }
 
-impl<C: DnsHandle<Error = ResolveError>, P: ConnectionProvider<ConnHandle = C>> DnsHandle
+impl<C: DnsHandle<Error = ResolveError>, P: ConnectionProvider<ConnHandle = C> + Send> DnsHandle
     for LookupEither<C, P>
 {
     type Error = ResolveError;
@@ -111,7 +111,7 @@ impl<C: DnsHandle<Error = ResolveError>, P: ConnectionProvider<ConnHandle = C>> 
     fn send<R: Into<DnsRequest>>(
         &mut self,
         request: R,
-    ) -> Box<Future<Item = DnsResponse, Error = Self::Error>> {
+    ) -> Box<Future<Item = DnsResponse, Error = Self::Error> + Send> {
         match *self {
             LookupEither::Retry(ref mut c) => c.send(request),
             #[cfg(feature = "dnssec")]
@@ -130,7 +130,7 @@ pub struct InnerLookupFuture<C: DnsHandle<Error = ResolveError> + 'static> {
     names: Vec<Name>,
     record_type: RecordType,
     options: DnsRequestOptions,
-    future: Box<Future<Item = Lookup, Error = ResolveError>>,
+    future: Box<Future<Item = Lookup, Error = ResolveError> + Send>,
 }
 
 impl<C: DnsHandle<Error = ResolveError> + 'static> InnerLookupFuture<C> {
@@ -152,7 +152,7 @@ impl<C: DnsHandle<Error = ResolveError> + 'static> InnerLookupFuture<C> {
             ResolveError::from(ResolveErrorKind::Message("can not lookup for no names"))
         });
 
-        let query: Box<Future<Item = Lookup, Error = ResolveError>> = match name {
+        let query: Box<Future<Item = Lookup, Error = ResolveError> + Send> = match name {
             Ok(name) => {
                 Box::new(client_cache.lookup(Query::query(name, record_type), options.clone()))
             }
@@ -394,7 +394,7 @@ pub mod tests {
         fn send<R: Into<DnsRequest>>(
             &mut self,
             _: R,
-        ) -> Box<Future<Item = DnsResponse, Error = Self::Error>> {
+        ) -> Box<Future<Item = DnsResponse, Error = Self::Error> + Send> {
             Box::new(future::result(
                 self.messages.lock().unwrap().pop().unwrap_or(empty()),
             ))

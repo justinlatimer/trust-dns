@@ -41,7 +41,7 @@ impl TcpClientStream<TokioTcpStream> {
         Box<DnsStreamHandle<Error = E> + Send>,
     )
     where
-        E: FromProtoError + Send + 'static,
+        E: FromProtoError + 'static,
     {
         Self::with_timeout(name_server, Duration::from_secs(5))
     }
@@ -60,7 +60,7 @@ impl TcpClientStream<TokioTcpStream> {
         Box<DnsStreamHandle<Error = E> + Send>,
     )
     where
-        E: FromProtoError + Send + 'static,
+        E: FromProtoError + 'static,
     {
         let (stream_future, sender) = TcpStream::with_timeout(name_server, timeout);
 

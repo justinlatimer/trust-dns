@@ -53,7 +53,7 @@ impl MdnsStream {
         BufStreamHandle<E>,
     )
     where
-        E: FromProtoError + Send,
+        E: FromProtoError,
     {
         Self::new::<E>(
             *MDNS_IPV4,
@@ -74,7 +74,7 @@ impl MdnsStream {
         BufStreamHandle<E>,
     )
     where
-        E: FromProtoError + Send,
+        E: FromProtoError,
     {
         Self::new::<E>(
             *MDNS_IPV6,
@@ -117,7 +117,7 @@ impl MdnsStream {
         BufStreamHandle<E>,
     )
     where
-        E: FromProtoError + Send,
+        E: FromProtoError,
     {
         let (message_sender, outbound_messages) = unbounded();
         let message_sender = BufStreamHandle::<E>::new(message_sender);
@@ -448,6 +448,7 @@ pub mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_one_shot_mdns_ipv4() {
         one_shot_mdns_test(SocketAddr::new(*TEST_MDNS_IPV4, BASE_TEST_PORT + 1));
     }
