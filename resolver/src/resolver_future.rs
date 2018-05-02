@@ -337,6 +337,7 @@ mod tests {
     use std::str::FromStr;
 
     use self::tokio_core::reactor::Core;
+    use futures::future;
 
     use trust_dns_proto::error::ProtoErrorKind;
 
@@ -349,7 +350,7 @@ mod tests {
         let resolver = ResolverFuture::new(config, ResolverOpts::default());
 
         let response = io_loop
-            .run(resolver.lookup_ip("www.example.com."))
+            .run(future::lazy(|| { resolver.lookup_ip("www.example.com.") }))
             .expect("failed to run lookup");
 
         assert_eq!(response.iter().count(), 1);
@@ -391,7 +392,7 @@ mod tests {
         );
 
         let response = io_loop
-            .run(resolver.lookup_ip("10.1.0.2"))
+            .run(future::lazy(|| { resolver.lookup_ip("10.1.0.2") }))
             .expect("failed to run lookup");
 
         assert_eq!(
@@ -400,7 +401,7 @@ mod tests {
         );
 
         let response = io_loop
-            .run(resolver.lookup_ip("2606:2800:220:1:248:1893:25c8:1946"))
+            .run(future::lazy(|| { resolver.lookup_ip("2606:2800:220:1:248:1893:25c8:1946") }))
             .expect("failed to run lookup");
 
         assert_eq!(
@@ -424,7 +425,7 @@ mod tests {
         );
 
         let response = io_loop
-            .run(resolver.lookup_ip("www.example.com."))
+            .run(future::lazy(|| { resolver.lookup_ip("www.example.com.") }))
             .expect("failed to run lookup");
 
         // TODO: this test is flaky, sometimes 1 is returned, sometimes 2...
@@ -458,7 +459,7 @@ mod tests {
 
         // needs to be a domain that exists, but is not signed (eventually this will be)
         let name = Name::from_str("www.trust-dns.org.").unwrap();
-        let response = io_loop.run(resolver.lookup_ip("www.trust-dns.org."));
+        let response = io_loop.run(future::lazy(|| { resolver.lookup_ip("www.trust-dns.org.") }));
 
         assert!(response.is_err());
         let error = response.unwrap_err();
@@ -477,7 +478,7 @@ mod tests {
         let resolver = ResolverFuture::from_system_conf().unwrap();
 
         let response = io_loop
-            .run(resolver.lookup_ip("www.example.com."))
+            .run(future::lazy(|| { resolver.lookup_ip("www.example.com.") }))
             .expect("failed to run lookup");
 
         assert_eq!(response.iter().count(), 2);
@@ -504,7 +505,7 @@ mod tests {
         let resolver = ResolverFuture::from_system_conf().unwrap();
 
         let response = io_loop
-            .run(resolver.lookup_ip("a.com"))
+            .run(future::lazy(|| { resolver.lookup_ip("a.com") }))
             .expect("failed to run lookup");
 
         assert_eq!(response.iter().count(), 1);
@@ -537,7 +538,7 @@ mod tests {
         );
 
         let response = io_loop
-            .run(resolver.lookup_ip("www.example.com."))
+            .run(future::lazy(|| { resolver.lookup_ip("www.example.com.") }))
             .expect("failed to run lookup");
 
         assert_eq!(response.iter().count(), 1);
@@ -573,7 +574,7 @@ mod tests {
 
         // notice this is not a FQDN, no trailing dot.
         let response = io_loop
-            .run(resolver.lookup_ip("www.example.com"))
+            .run(future::lazy(|| { resolver.lookup_ip("www.example.com") }))
             .expect("failed to run lookup");
 
         assert_eq!(response.iter().count(), 1);
@@ -609,7 +610,7 @@ mod tests {
 
         // notice this is not a FQDN, no trailing dot.
         let response = io_loop
-            .run(resolver.lookup_ip("www.example.com"))
+            .run(future::lazy(|| { resolver.lookup_ip("www.example.com") }))
             .expect("failed to run lookup");
 
         assert_eq!(response.iter().count(), 1);
@@ -644,7 +645,7 @@ mod tests {
 
         // notice no dots, should not trigger ndots rule
         let response = io_loop
-            .run(resolver.lookup_ip("www"))
+            .run(future::lazy(|| { resolver.lookup_ip("www") }))
             .expect("failed to run lookup");
 
         assert_eq!(response.iter().count(), 1);
@@ -680,7 +681,7 @@ mod tests {
 
         // notice no dots, should not trigger ndots rule
         let response = io_loop
-            .run(resolver.lookup_ip("www"))
+            .run(future::lazy(|| { resolver.lookup_ip("www") }))
             .expect("failed to run lookup");
 
         assert_eq!(response.iter().count(), 1);
@@ -702,7 +703,7 @@ mod tests {
         );
 
         let response = io_loop
-            .run(resolver.lookup_ip("中国.icom.museum."))
+            .run(future::lazy(|| { resolver.lookup_ip("中国.icom.museum.") }))
             .expect("failed to run lookup");
 
         // we just care that the request succeeded, not about the actual content

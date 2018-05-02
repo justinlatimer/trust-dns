@@ -29,9 +29,8 @@ use lookup::Lookup;
 
 const MAX_QUERY_DEPTH: u8 = 8; // arbitrarily chosen number...
 
-// FIXME: this is wrong, it must be restricted to the Tokio Task,
-thread_local! {
-    static QUERY_DEPTH: RefCell<u8> = RefCell::new(0);
+task_local! {
+    static QUERY_DEPTH: RefCell<u8> = RefCell::new(0)
 }
 
 lazy_static! {
@@ -958,81 +957,95 @@ mod tests {
         };
 
         assert_eq!(
-            client
-                .lookup(
-                    Query::query(Name::from_ascii("localhost.").unwrap(), RecordType::A),
-                    Default::default()
-                )
+            future::lazy(|| {
+                client
+                    .lookup(
+                        Query::query(Name::from_ascii("localhost.").unwrap(), RecordType::A),
+                        Default::default()
+                    )
+                })
                 .wait()
                 .expect("should have returned localhost"),
             *LOCALHOST_V4
         );
 
         assert_eq!(
-            client
-                .lookup(
-                    Query::query(Name::from_ascii("localhost.").unwrap(), RecordType::AAAA),
-                    Default::default()
-                )
+            future::lazy(|| {
+                client
+                    .lookup(
+                        Query::query(Name::from_ascii("localhost.").unwrap(), RecordType::AAAA),
+                        Default::default()
+                    )
+                })
                 .wait()
                 .expect("should have returned localhost"),
             *LOCALHOST_V6
         );
 
         assert_eq!(
-            client
-                .lookup(
-                    Query::query(Name::from(Ipv4Addr::new(127, 0, 0, 1)), RecordType::PTR),
-                    Default::default()
-                )
+            future::lazy(|| {
+                client
+                    .lookup(
+                        Query::query(Name::from(Ipv4Addr::new(127, 0, 0, 1)), RecordType::PTR),
+                        Default::default()
+                    )
+                })
                 .wait()
                 .expect("should have returned localhost"),
             *LOCALHOST
         );
 
         assert_eq!(
-            client
-                .lookup(
-                    Query::query(
-                        Name::from(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)),
-                        RecordType::PTR
-                    ),
-                    Default::default()
-                )
+            future::lazy(|| {
+                client
+                    .lookup(
+                        Query::query(
+                            Name::from(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)),
+                            RecordType::PTR
+                        ),
+                        Default::default()
+                    )
+                })
                 .wait()
                 .expect("should have returned localhost"),
             *LOCALHOST
         );
 
         assert!(
-            client
-                .lookup(
-                    Query::query(Name::from_ascii("localhost.").unwrap(), RecordType::MX),
-                    Default::default()
-                )
+            future::lazy(|| {
+                client
+                    .lookup(
+                        Query::query(Name::from_ascii("localhost.").unwrap(), RecordType::MX),
+                        Default::default()
+                    )
+                })
                 .wait()
                 .is_err()
         );
 
         assert!(
-            client
-                .lookup(
-                    Query::query(Name::from(Ipv4Addr::new(127, 0, 0, 1)), RecordType::MX),
-                    Default::default()
-                )
+            future::lazy(|| {
+                client
+                    .lookup(
+                        Query::query(Name::from(Ipv4Addr::new(127, 0, 0, 1)), RecordType::MX),
+                        Default::default()
+                    )
+                })
                 .wait()
                 .is_err()
         );
 
         assert!(
-            client
-                .lookup(
-                    Query::query(
-                        Name::from(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)),
-                        RecordType::MX
-                    ),
-                    Default::default()
-                )
+            future::lazy(|| {
+                client
+                    .lookup(
+                        Query::query(
+                            Name::from(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)),
+                            RecordType::MX
+                        ),
+                        Default::default()
+                    )
+                })
                 .wait()
                 .is_err()
         );
@@ -1048,14 +1061,16 @@ mod tests {
         };
 
         assert!(
-            client
-                .lookup(
-                    Query::query(
-                        Name::from_ascii("horrible.invalid.").unwrap(),
-                        RecordType::A,
-                    ),
-                    Default::default()
-                )
+            future::lazy(|| {
+                client
+                    .lookup(
+                        Query::query(
+                            Name::from_ascii("horrible.invalid.").unwrap(),
+                            RecordType::A,
+                        ),
+                        Default::default()
+                    )
+                })
                 .wait()
                 .is_err()
         );
@@ -1080,14 +1095,16 @@ mod tests {
         };
 
         assert!(
-            client
-                .lookup(
-                    Query::query(
-                        Name::from_ascii("www.example.local.").unwrap(),
-                        RecordType::A,
-                    ),
-                    Default::default()
-                )
+            future::lazy(|| {
+                client
+                    .lookup(
+                        Query::query(
+                            Name::from_ascii("www.example.local.").unwrap(),
+                            RecordType::A,
+                        ),
+                        Default::default()
+                    )
+                })
                 .wait()
                 .is_ok()
         );

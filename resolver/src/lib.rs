@@ -81,6 +81,7 @@
 //! # extern crate trust_dns_resolver;
 //! # fn main() {
 //! use std::net::*;
+//! use futures::future;
 //! use tokio_core::reactor::Core;
 //! use trust_dns_resolver::ResolverFuture;
 //! use trust_dns_resolver::config::*;
@@ -95,7 +96,7 @@
 //! // Lookup the IP addresses associated with a name.
 //! // This returns a future that will lookup the IP addresses, it must be run in the Core to
 //! //  to get the actual result.
-//! let lookup_future = resolver.lookup_ip("www.example.com.");
+//! let lookup_future = future::lazy(|| {resolver.lookup_ip("www.example.com.") });
 //!
 //! // Run the lookup until it resolves or errors
 //! let mut response = io_loop.run(lookup_future).unwrap();
@@ -164,6 +165,7 @@
 extern crate cfg_if;
 #[macro_use]
 extern crate error_chain;
+#[macro_use]
 extern crate futures;
 #[cfg(target_os = "windows")]
 extern crate ipconfig;

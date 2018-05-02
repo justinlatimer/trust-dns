@@ -10,6 +10,7 @@ use std::io;
 use std::net::IpAddr;
 use std::sync::{Arc, Mutex};
 
+use futures::future;
 use tokio_core::reactor::Core;
 use trust_dns_proto::rr::RecordType;
 
@@ -44,7 +45,7 @@ macro_rules! lookup_fn {
 pub fn $p(&self, query: &str) -> ResolveResult<$l> {
     let mut reactor = Core::new()?;
     let future = self.construct_and_run()?;
-    reactor.run(future.$p(query))
+    reactor.run(future::lazy(|| { future.$p(query) }))
 }
     };
     ($p:ident, $l:ty, $t:ty) => {
@@ -56,7 +57,7 @@ pub fn $p(&self, query: &str) -> ResolveResult<$l> {
 pub fn $p(&self, query: $t) -> ResolveResult<$l> {
     let mut reactor = Core::new()?;
     let future = self.construct_and_run()?;
-    reactor.run(future.$p(query))
+    reactor.run(future::lazy(|| { future.$p(query) }))
 }
     };
 }
@@ -123,7 +124,7 @@ impl Resolver {
     pub fn lookup(&self, name: &str, record_type: RecordType) -> ResolveResult<Lookup> {
         let mut reactor = Core::new()?;
         let future = self.construct_and_run()?;
-        reactor.run(future.lookup(name, record_type))
+        reactor.run(future::lazy(|| { future.lookup(name, record_type) }))
     }
 
     /// Performs a dual-stack DNS lookup for the IP for the given hostname.
@@ -136,7 +137,7 @@ impl Resolver {
     pub fn lookup_ip(&self, host: &str) -> ResolveResult<LookupIp> {
         let mut reactor = Core::new()?;
         let future = self.construct_and_run()?;
-        reactor.run(future.lookup_ip(host))
+        reactor.run(future::lazy(|| { future.lookup_ip(host) }))
     }
 
     /// Performs a DNS lookup for an SRV record for the specified service type and protocol at the given name.
@@ -158,14 +159,14 @@ impl Resolver {
         let mut reactor = Core::new()?;
         let future = self.construct_and_run()?;
         #[allow(deprecated)]
-        reactor.run(future.lookup_service(service, protocol, name))
+        reactor.run(future::lazy(|| { future.lookup_service(service, protocol, name) }))
     }
 
     /// Lookup an SRV record.
     pub fn lookup_srv(&self, name: &str) -> ResolveResult<lookup::SrvLookup> {
         let mut reactor = Core::new()?;
         let future = self.construct_and_run()?;
-        reactor.run(future.lookup_srv(name))
+        reactor.run(future::lazy(|| { future.lookup_srv(name) }))
     }
 
     lookup_fn!(reverse_lookup, lookup::ReverseLookup, IpAddr);

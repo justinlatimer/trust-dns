@@ -438,12 +438,14 @@ pub mod tests {
     #[test]
     fn test_ipv4_only_strategy() {
         assert_eq!(
-            ipv4_only(
-                Name::root(),
-                CachingClient::new(0, mock(vec![v4_message()])),
-                Default::default(),
-                None,
-            ).wait()
+            future::lazy(|| {
+                ipv4_only(
+                    Name::root(),
+                    CachingClient::new(0, mock(vec![v4_message()])),
+                    Default::default(),
+                    None,
+                )
+            }).wait()
                 .unwrap()
                 .iter()
                 .map(|r| r.to_ip_addr().unwrap())
@@ -455,12 +457,14 @@ pub mod tests {
     #[test]
     fn test_ipv6_only_strategy() {
         assert_eq!(
-            ipv6_only(
-                Name::root(),
-                CachingClient::new(0, mock(vec![v6_message()])),
-                Default::default(),
-                None,
-            ).wait()
+            future::lazy(|| {
+                ipv6_only(
+                    Name::root(),
+                    CachingClient::new(0, mock(vec![v6_message()])),
+                    Default::default(),
+                    None,
+                )
+            }).wait()
                 .unwrap()
                 .iter()
                 .map(|r| r.to_ip_addr().unwrap())
@@ -474,12 +478,14 @@ pub mod tests {
         // ipv6 is consistently queried first (even though the select has it second)
         // both succeed
         assert_eq!(
-            ipv4_and_ipv6(
-                Name::root(),
-                CachingClient::new(0, mock(vec![v6_message(), v4_message()])),
-                Default::default(),
-                None,
-            ).wait()
+            future::lazy(|| {
+                ipv4_and_ipv6(
+                    Name::root(),
+                    CachingClient::new(0, mock(vec![v6_message(), v4_message()])),
+                    Default::default(),
+                    None,
+                )
+            }).wait()
                 .unwrap()
                 .iter()
                 .map(|r| r.to_ip_addr().unwrap())
@@ -492,12 +498,14 @@ pub mod tests {
 
         // only ipv4 available
         assert_eq!(
-            ipv4_and_ipv6(
-                Name::root(),
-                CachingClient::new(0, mock(vec![empty(), v4_message()])),
-                Default::default(),
-                None,
-            ).wait()
+            future::lazy(|| {
+                ipv4_and_ipv6(
+                    Name::root(),
+                    CachingClient::new(0, mock(vec![empty(), v4_message()])),
+                    Default::default(),
+                    None,
+                )
+            }).wait()
                 .unwrap()
                 .iter()
                 .map(|r| r.to_ip_addr().unwrap())
@@ -507,12 +515,14 @@ pub mod tests {
 
         // error then ipv4
         assert_eq!(
-            ipv4_and_ipv6(
-                Name::root(),
-                CachingClient::new(0, mock(vec![error(), v4_message()])),
-                Default::default(),
-                None,
-            ).wait()
+            future::lazy(|| {
+                ipv4_and_ipv6(
+                    Name::root(),
+                    CachingClient::new(0, mock(vec![error(), v4_message()])),
+                    Default::default(),
+                    None,
+                )
+            }).wait()
                 .unwrap()
                 .iter()
                 .map(|r| r.to_ip_addr().unwrap())
@@ -522,12 +532,14 @@ pub mod tests {
 
         // only ipv6 available
         assert_eq!(
-            ipv4_and_ipv6(
-                Name::root(),
-                CachingClient::new(0, mock(vec![v6_message(), empty()])),
-                Default::default(),
-                None,
-            ).wait()
+            future::lazy(|| {
+                ipv4_and_ipv6(
+                    Name::root(),
+                    CachingClient::new(0, mock(vec![v6_message(), empty()])),
+                    Default::default(),
+                    None,
+                )
+            }).wait()
                 .unwrap()
                 .iter()
                 .map(|r| r.to_ip_addr().unwrap())
@@ -537,12 +549,14 @@ pub mod tests {
 
         // error, then only ipv6 available
         assert_eq!(
-            ipv4_and_ipv6(
-                Name::root(),
-                CachingClient::new(0, mock(vec![v6_message(), error()])),
-                Default::default(),
-                None,
-            ).wait()
+            future::lazy(|| {
+                ipv4_and_ipv6(
+                    Name::root(),
+                    CachingClient::new(0, mock(vec![v6_message(), error()])),
+                    Default::default(),
+                    None,
+                )
+            }).wait()
                 .unwrap()
                 .iter()
                 .map(|r| r.to_ip_addr().unwrap())
@@ -555,12 +569,14 @@ pub mod tests {
     fn test_ipv6_then_ipv4_strategy() {
         // ipv6 first
         assert_eq!(
-            ipv6_then_ipv4(
-                Name::root(),
-                CachingClient::new(0, mock(vec![v6_message()])),
-                Default::default(),
-                None,
-            ).wait()
+            future::lazy(|| {
+                ipv6_then_ipv4(
+                    Name::root(),
+                    CachingClient::new(0, mock(vec![v6_message()])),
+                    Default::default(),
+                    None,
+                )
+            }).wait()
                 .unwrap()
                 .iter()
                 .map(|r| r.to_ip_addr().unwrap())
@@ -570,12 +586,14 @@ pub mod tests {
 
         // nothing then ipv4
         assert_eq!(
-            ipv6_then_ipv4(
-                Name::root(),
-                CachingClient::new(0, mock(vec![v4_message(), empty()])),
-                Default::default(),
-                None,
-            ).wait()
+            future::lazy(|| {
+                ipv6_then_ipv4(
+                    Name::root(),
+                    CachingClient::new(0, mock(vec![v4_message(), empty()])),
+                    Default::default(),
+                    None,
+                )
+            }).wait()
                 .unwrap()
                 .iter()
                 .map(|r| r.to_ip_addr().unwrap())
@@ -585,12 +603,14 @@ pub mod tests {
 
         // ipv4 and error
         assert_eq!(
-            ipv6_then_ipv4(
-                Name::root(),
-                CachingClient::new(0, mock(vec![v4_message(), error()])),
-                Default::default(),
-                None,
-            ).wait()
+            future::lazy(|| {
+                ipv6_then_ipv4(
+                    Name::root(),
+                    CachingClient::new(0, mock(vec![v4_message(), error()])),
+                    Default::default(),
+                    None,
+                )
+            }).wait()
                 .unwrap()
                 .iter()
                 .map(|r| r.to_ip_addr().unwrap())
@@ -603,12 +623,14 @@ pub mod tests {
     fn test_ipv4_then_ipv6_strategy() {
         // ipv6 first
         assert_eq!(
-            ipv4_then_ipv6(
-                Name::root(),
-                CachingClient::new(0, mock(vec![v4_message()])),
-                Default::default(),
-                None,
-            ).wait()
+            future::lazy(|| {
+                ipv4_then_ipv6(
+                    Name::root(),
+                    CachingClient::new(0, mock(vec![v4_message()])),
+                    Default::default(),
+                    None,
+                )
+            }).wait()
                 .unwrap()
                 .iter()
                 .map(|r| r.to_ip_addr().unwrap())
@@ -618,12 +640,14 @@ pub mod tests {
 
         // nothing then ipv6
         assert_eq!(
-            ipv4_then_ipv6(
-                Name::root(),
-                CachingClient::new(0, mock(vec![v6_message(), empty()])),
-                Default::default(),
-                None,
-            ).wait()
+            future::lazy(|| {
+                ipv4_then_ipv6(
+                    Name::root(),
+                    CachingClient::new(0, mock(vec![v6_message(), empty()])),
+                    Default::default(),
+                    None,
+                )
+            }).wait()
                 .unwrap()
                 .iter()
                 .map(|r| r.to_ip_addr().unwrap())
@@ -633,12 +657,14 @@ pub mod tests {
 
         // error then ipv6
         assert_eq!(
-            ipv4_then_ipv6(
-                Name::root(),
-                CachingClient::new(0, mock(vec![v6_message(), error()])),
-                Default::default(),
-                None,
-            ).wait()
+            future::lazy(|| {
+                ipv4_then_ipv6(
+                    Name::root(),
+                    CachingClient::new(0, mock(vec![v6_message(), error()])),
+                    Default::default(),
+                    None,
+                )
+            }).wait()
                 .unwrap()
                 .iter()
                 .map(|r| r.to_ip_addr().unwrap())

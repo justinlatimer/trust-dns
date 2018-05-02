@@ -431,12 +431,14 @@ pub mod tests {
     #[test]
     fn test_lookup() {
         assert_eq!(
-            InnerLookupFuture::lookup(
-                vec![Name::root()],
-                RecordType::A,
-                DnsRequestOptions::default(),
-                CachingClient::new(0, mock(vec![v4_message()])),
-            ).wait()
+            future::lazy(|| {
+                InnerLookupFuture::lookup(
+                    vec![Name::root()],
+                    RecordType::A,
+                    DnsRequestOptions::default(),
+                    CachingClient::new(0, mock(vec![v4_message()])),
+                )
+            }).wait()
                 .unwrap()
                 .iter()
                 .map(|r| r.to_ip_addr().unwrap())
@@ -448,12 +450,14 @@ pub mod tests {
     #[test]
     fn test_error() {
         assert!(
-            InnerLookupFuture::lookup(
-                vec![Name::root()],
-                RecordType::A,
-                DnsRequestOptions::default(),
-                CachingClient::new(0, mock(vec![error()])),
-            ).wait()
+            future::lazy(|| {
+                InnerLookupFuture::lookup(
+                    vec![Name::root()],
+                    RecordType::A,
+                    DnsRequestOptions::default(),
+                    CachingClient::new(0, mock(vec![error()])),
+                )
+            }).wait()
                 .is_err()
         );
     }
@@ -461,12 +465,14 @@ pub mod tests {
     #[test]
     fn test_empty_no_response() {
         assert_eq!(
-            InnerLookupFuture::lookup(
-                vec![Name::root()],
-                RecordType::A,
-                DnsRequestOptions::default(),
-                CachingClient::new(0, mock(vec![empty()])),
-            ).wait()
+            future::lazy(|| {
+                InnerLookupFuture::lookup(
+                    vec![Name::root()],
+                    RecordType::A,
+                    DnsRequestOptions::default(),
+                    CachingClient::new(0, mock(vec![empty()])),
+                )
+            }).wait()
                 .unwrap_err()
                 .kind(),
             &ResolveErrorKind::NoRecordsFound(Query::query(Name::root(), RecordType::A))
